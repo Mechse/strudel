@@ -43,12 +43,11 @@ prompt_choice :: proc() -> Choice {
 
 edit_message :: proc(initial: string) -> (string, bool) {
 	tmp_path := "/tmp/strudel-COMMIT_EDITMSG"
-	write_ok := os.write_entire_file(tmp_path, transmute([]u8)initial)
-	if write_ok != nil {
-		fmt.eprintfln("strudel: failed to write tempfile for editor")
+	write_err := os.write_entire_file(tmp_path, transmute([]u8)initial)
+	if write_err != nil {
+		fmt.eprintfln("strudel: failed to write tempfile for editor: %v", write_err)
 		return "", false
 	}
-
 	defer os.remove(tmp_path)
 
 	editor := os.get_env("EDITOR", context.temp_allocator)
@@ -56,13 +55,19 @@ edit_message :: proc(initial: string) -> (string, bool) {
 		editor = "/usr/bin/vim"
 	}
 
-	state, _, _, err := os.process_exec(
+	// Spawn the editor with the parent's real terminal handles.
+	// process_start does not capture; process_exec would.
+	proc_handle, start_err := os.process_start(
 		{command = {editor, tmp_path}, stdin = os.stdin, stdout = os.stdout, stderr = os.stderr},
-		context.temp_allocator,
 	)
+	if start_err != nil {
+		fmt.eprintfln("strudel: failed to launch editor: %v", start_err)
+		return "", false
+	}
 
-	if err != nil {
-		fmt.eprintfln("strudel: failed to launch editor: %v", err)
+	state, wait_err := os.process_wait(proc_handle)
+	if wait_err != nil {
+		fmt.eprintfln("strudel: failed to wait for editor: %v", wait_err)
 		return "", false
 	}
 	if state.exit_code != 0 {
@@ -70,9 +75,9 @@ edit_message :: proc(initial: string) -> (string, bool) {
 		return "", false
 	}
 
-	content, read_ok := os.read_entire_file_from_path(tmp_path, context.temp_allocator)
-	if read_ok != nil {
-		fmt.eprintln("strudel: failed to re-read tempfile after edit")
+	content, read_err := os.read_entire_file_from_path(tmp_path, context.temp_allocator)
+	if read_err != nil {
+		fmt.eprintfln("strudel: failed to re-read tempfile after edit: %v", read_err)
 		return "", false
 	}
 	return strings.trim_space(string(content)), true
