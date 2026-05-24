@@ -1,3 +1,14 @@
+# strudel
+
+A Git commit-message generator powered by Apple's on-device language model.
+No API keys. No cloud. No data leaves your Mac.
+
+**Try it:**
+```
+$ git add .
+$ strudel
+```
+
 ## Install
 
 ```bash
