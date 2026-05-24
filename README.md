@@ -1,13 +1,13 @@
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com//strudel/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Mechse/strudel/main/install.sh | bash
 ```
 
 To audit the script before running:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com//strudel/main/install.sh
+curl -fsSL https://raw.githubusercontent.com/Mechse/strudel/main/install.sh
 ```
 
 To uninstall:
