@@ -14,8 +14,11 @@ find_helper :: proc() -> (string, bool) {
 		return "", false
 	}
 
-	exe_path := os.args[0]
-	exe_dir := filepath.dir(exe_path)
+	exe_dir, dir_err := os.get_executable_directory(context.temp_allocator)
+	if dir_err != nil {
+		fmt.eprintfln("studel: could not locate own executable: %v", dir_err)
+		return "", false
+	}
 
 	c1, _ := filepath.join({exe_dir, "strudel-helper"}, context.temp_allocator)
 	c2, _ := filepath.join({exe_dir, "..", "libexec", "strudel-helper"}, context.temp_allocator)
