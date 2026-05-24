@@ -3,11 +3,11 @@
 A Git commit-message generator powered by Apple's on-device language model.
 No API keys. No cloud. No data leaves your Mac.
 
-**Try it:**
-```
-$ git add .
-$ strudel
-```
+
+
+https://github.com/user-attachments/assets/7a431c9c-caf2-4022-a748-ed6b66a3bee7
+
+
 
 ## Install
 
