@@ -1,0 +1,17 @@
+# Swift
+.build/
+.swiftpm/
+*.xcodeproj
+DerivedData/
+
+# Odin
+*.exe
+*.o
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp

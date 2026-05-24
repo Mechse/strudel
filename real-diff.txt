@@ -1,0 +1,120 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..244da30
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,17 @@
++# Swift
++.build/
++.swiftpm/
++*.xcodeproj
++DerivedData/
++
++# Odin
++*.exe
++*.o
++
++# macOS
++.DS_Store
++
++# Editor
++.vscode/
++.idea/
++*.swp
+diff --git a/helper/Package.swift b/helper/Package.swift
+new file mode 100644
+index 0000000..507255a
+--- /dev/null
++++ b/helper/Package.swift
+@@ -0,0 +1,13 @@
++// swift-tools-version: 6.0
++import PackageDescription
++
++let package = Package(
++    name: "strudel-helper",
++    platforms: [.macOS("26.0")],
++    targets: [
++        .executableTarget(
++            name: "strudel-helper",
++            path: "Sources/strudel-helper"
++        )
++    ]
++)
+diff --git a/helper/Sources/strudel-helper/StrudelHelper.swift b/helper/Sources/strudel-helper/StrudelHelper.swift
+new file mode 100644
+index 0000000..07ead4d
+--- /dev/null
++++ b/helper/Sources/strudel-helper/StrudelHelper.swift
+@@ -0,0 +1,50 @@
++import Foundation
++import FoundationModels
++
++@main
++struct StrudelHelper {
++    static func main() async {
++        // 1. Is the on-device model actually available right now?
++        let model = SystemLanguageModel.default
++        switch model.availability {
++        case .available:
++            break
++        case .unavailable(let reason):
++            fputs("strudel-helper: Apple Intelligence unavailable: \(reason)\n", stderr)
++            exit(2)
++        }
++
++        // 2. Read the diff from stdin.
++        let stdinData = FileHandle.standardInput.readDataToEndOfFile()
++        guard let diff = String(data: stdinData, encoding: .utf8),
++            !diff.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
++        else {
++            fputs("strudel-helper: empty or non-UTF8 input on stdin\n", stderr)
++            exit(1)
++        }
++
++        // 3. System prompt — the actual "product" of the helper.
++        let instructions = """
++            You write Git commit messages from diffs.
++
++            Rules:
++            - Output ONLY the commit message. No quotes, no markdown, no preamble, no closing remark.
++            - First line: a short summary in imperative mood ("Add", not "Added" or "Adds"). Aim for 50 characters, hard maximum 72.
++            - For a trivial change, the summary line alone is enough.
++            - For a non-trivial change, follow the summary with a blank line and a short body (2-5 lines) explaining the why and any context that isn't obvious from the diff itself.
++            - Use a Conventional Commit prefix (feat:, fix:, refactor:, docs:, test:, chore:, perf:, style:) ONLY when it's clearly appropriate based on the diff. Otherwise omit the prefix.
++            - Describe what the diff does. Do not invent intent that isn't visible in the changes.
++            """
++
++        let session = LanguageModelSession(instructions: instructions)
++
++        // 4. Ask the model.
++        do {
++            let response = try await session.respond(to: "Diff:\n\n\(diff)")
++            print(response.content)
++        } catch {
++            fputs("strudel-helper: generation failed: \(error)\n", stderr)
++            exit(1)
++        }
++    }
++}
+diff --git a/sample-diff.txt b/sample-diff.txt
+new file mode 100644
+index 0000000..c43af32
+--- /dev/null
++++ b/sample-diff.txt
+@@ -0,0 +1,16 @@
++diff --git a/src/auth/login.ts b/src/auth/login.ts
++index 8c2d4a1..a1b9f3e 100644
++--- a/src/auth/login.ts
+++++ b/src/auth/login.ts
++@@ -42,7 +42,12 @@ export async function login(email: string, password: string) {
++     throw new InvalidCredentialsError();
++   }
++
++-  return { token: generateToken(user) };
+++  if (user.mfaEnabled) {
+++    const challenge = await createMfaChallenge(user.id);
+++    return { mfaRequired: true, challengeId: challenge.id };
+++  }
+++
+++  return { token: generateToken(user), mfaRequired: false };
++ }
