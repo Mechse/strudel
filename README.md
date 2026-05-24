@@ -26,3 +26,11 @@ To uninstall:
 ```bash
 sudo rm /usr/local/bin/strudel /usr/local/libexec/strudel-helper
 ```
+
+## Roadmap
+
+- [x] Tier 1: small diffs sent as-is
+- [ ] Tier 2: compressed diff (`--stat` + `--unified=0`) for medium diffs
+- [ ] Tier 3: per-file map-reduce for very large diffs
+- [ ] `--candidates N` to generate multiple messages and let you pick
+- [ ] `--message-only` flag for use in `prepare-commit-msg` git hooks
