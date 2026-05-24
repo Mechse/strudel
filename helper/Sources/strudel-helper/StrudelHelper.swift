@@ -6,10 +6,43 @@ enum Mode {
     case summarizeFile
 }
 
+// MARK: - Guided output shapes
+
+@Generable
+struct CommitMessage {
+    @Guide(
+        description:
+            "Imperative-mood summary of what the change does. First word is one of: Add, Fix, Refactor, Remove, Update, Rename, Move, Replace, Document, Test. Never past tense or gerund (no 'Added', 'Adds', 'Adding', 'Will add'). Maximum 72 characters."
+    )
+    let summary: String
+
+    @Guide(
+        description:
+            "Conventional Commit type, chosen by what the change accomplishes:\n- feat: adds new user-visible functionality\n- fix: corrects a bug\n- refactor: restructures code without changing behavior\n- docs: documentation only\n- test: tests only\n- chore: build, tooling, dependencies, project setup, gitignore\n- perf: performance improvement\n- style: formatting only, no code change\nReturn empty string if none of these clearly fits."
+    )
+    let type: String
+
+    @Guide(
+        description:
+            "Explanatory body: 2-5 short lines describing what the change accomplishes and any context not obvious from the diff. Empty string for trivial changes like typos, one-line fixes, or version bumps."
+    )
+    let body: String
+}
+
+@Generable
+struct FileSummary {
+    @Guide(
+        description:
+            "One-line, imperative-mood description of what changed in this file. 60-80 characters. No filename prefix, no markdown."
+    )
+    let summary: String
+}
+
+// MARK: - Entry point
+
 @main
 struct StrudelHelper {
     static func main() async {
-        // 1. Parse mode from args. Default mode if no flag.
         let args = CommandLine.arguments.dropFirst()
         var mode: Mode = .generateMessage
         for arg in args {
@@ -24,11 +57,10 @@ struct StrudelHelper {
             default:
                 fputs("strudel-helper: unknown argument: \(arg)\n", stderr)
                 printUsage()
-                exit(64)  // EX_USAGE
+                exit(64)
             }
         }
 
-        // 2. Check model availability.
         let model = SystemLanguageModel.default
         switch model.availability {
         case .available:
@@ -38,7 +70,6 @@ struct StrudelHelper {
             exit(2)
         }
 
-        // 3. Read stdin.
         let stdinData = FileHandle.standardInput.readDataToEndOfFile()
         guard let input = String(data: stdinData, encoding: .utf8),
             !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -47,27 +78,90 @@ struct StrudelHelper {
             exit(1)
         }
 
-        // 4. Pick the right prompt and user-message wrapping for this mode.
-        let instructions: String
-        let userMessage: String
-        switch mode {
-        case .generateMessage:
-            instructions = generateMessageInstructions
-            userMessage = "Diff or change summary:\n\n\(input)"
-        case .summarizeFile:
-            instructions = summarizeFileInstructions
-            userMessage = "File diff:\n\n\(input)"
-        }
-
-        // 5. Run the model.
-        let session = LanguageModelSession(instructions: instructions)
         do {
-            let response = try await session.respond(to: userMessage)
-            print(response.content)
+            switch mode {
+            case .generateMessage:
+                try await runGenerateMessage(input: input)
+            case .summarizeFile:
+                try await runSummarizeFile(input: input)
+            }
         } catch {
             fputs("strudel-helper: generation failed: \(error)\n", stderr)
             exit(1)
         }
+    }
+
+    static func runGenerateMessage(input: String) async throws {
+        let session = LanguageModelSession(instructions: generateMessageInstructions)
+        let response = try await session.respond(
+            to: "Diff or change summary:\n\n\(input)",
+            generating: CommitMessage.self
+        )
+        let msg = response.content
+
+        // Belt-and-suspenders: enforce imperative mood even if the model slipped.
+        let cleanedSummary = forceImperative(msg.summary)
+
+        let firstLine: String
+        if msg.type.isEmpty {
+            firstLine = cleanedSummary
+        } else {
+            firstLine = "\(msg.type): \(cleanedSummary)"
+        }
+
+        if msg.body.isEmpty {
+            print(firstLine)
+        } else {
+            print(firstLine)
+            print("")
+            print(forceImperative(msg.body))
+        }
+    }
+
+    static func runSummarizeFile(input: String) async throws {
+        let session = LanguageModelSession(instructions: summarizeFileInstructions)
+        let response = try await session.respond(
+            to: "File diff:\n\n\(input)",
+            generating: FileSummary.self
+        )
+        print(forceImperative(response.content.summary))
+    }
+
+    /// Replaces common past/gerund forms at the start of each line with imperative forms.
+    /// The model usually gets it right; this catches the cases it doesn't.
+    static func forceImperative(_ text: String) -> String {
+        let replacements: [(String, String)] = [
+            ("Added ", "Add "),
+            ("Adds ", "Add "),
+            ("Adding ", "Add "),
+            ("Fixed ", "Fix "),
+            ("Fixes ", "Fix "),
+            ("Fixing ", "Fix "),
+            ("Refactored ", "Refactor "),
+            ("Refactors ", "Refactor "),
+            ("Removed ", "Remove "),
+            ("Removes ", "Remove "),
+            ("Updated ", "Update "),
+            ("Updates ", "Update "),
+            ("Renamed ", "Rename "),
+            ("Renames ", "Rename "),
+            ("Changed ", "Change "),
+            ("Changes ", "Change "),
+            ("Moved ", "Move "),
+            ("Moves ", "Move "),
+            ("Replaced ", "Replace "),
+            ("Replaces ", "Replace "),
+        ]
+        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        for i in lines.indices {
+            for (from, to) in replacements {
+                if lines[i].hasPrefix(from) {
+                    lines[i] = to + lines[i].dropFirst(from.count)
+                    break
+                }
+            }
+        }
+        return lines.joined(separator: "\n")
     }
 
     static func printUsage() {
@@ -79,7 +173,6 @@ struct StrudelHelper {
             Modes:
               default | generate-message  Write a Git commit message from a diff
                                           or from a list of per-file summaries.
-                                          (This is the default.)
               summarize-file              Write one short line summarizing the
                                           changes in a single file's diff.
 
@@ -93,61 +186,23 @@ struct StrudelHelper {
     }
 }
 
-// MARK: - Prompts
+// MARK: - Instructions
 
 private let generateMessageInstructions = """
-    You write Git commit messages.
+    You write Git commit messages from a diff or from a list of per-file summaries.
 
-    Input is either a raw Git diff, OR a list of lines in the form
-    "filename: short summary" describing the files in one commit. Treat
-    both shapes the same way: figure out what the commit does and write
-    a message for it.
+    Determine what the change accomplishes by reading the input. Produce:
+    - A summary line in imperative mood (first word is "Add", "Fix", "Refactor", "Remove", "Update", "Rename", or similar).
+    - A Conventional Commit type when one clearly fits: feat for new functionality, fix for bug fixes, refactor for restructuring without behavior change, docs for documentation, test for tests, chore for tooling and build, perf for performance, style for formatting. Leave the type empty when none clearly fits.
+    - A body only if the change is non-trivial; otherwise leave the body empty.
 
-    Rules:
-    - Output ONLY the commit message. No quotes, no markdown, no preamble, no closing remark.
-    - First line: a short summary in imperative mood ("Add", "Fix", "Refactor" — never "Added", "Adds", "Adding"). Aim for 50 characters, hard maximum 72.
-    - Describe what the code DOES, not what the diff operation IS. "Add new file: foo.swift" is wrong. "Add Swift helper that wraps FoundationModels" is right.
-    - For a new file, read its contents (the + lines) and describe its purpose.
-    - For a non-trivial change, follow the summary with a blank line and a 2-5 line body explaining context that isn't obvious from the diff.
-    - Use a Conventional Commit prefix (feat:, fix:, refactor:, docs:, test:, chore:, perf:, style:) ONLY when clearly appropriate. Otherwise omit it.
-    - Describe what is actually in the input. Do not invent intent.
-
-    Example for adding a new utility module:
-
-    feat: add token counter for diff truncation
-
-    Adds a small helper that estimates token count from byte length
-    so we can warn the user before sending oversize diffs to the model.
-
-    Example for an initial commit:
-
-    chore: initial commit
-
-    Sets up the project skeleton: a Swift helper that pipes Git diffs
-    through Apple's FoundationModels framework to generate commit
-    messages, plus a placeholder for the Odin CLI that will drive it.
+    The summary describes what the code does, not what the diff operation is. A new file is described by its purpose, derived from its contents, not by the fact that it is new.
     """
 
 private let summarizeFileInstructions = """
-    You summarize one file's diff in a single short line.
+    You summarize what changed in one file of a Git commit.
 
-    This summary will be combined with summaries of other files to write
-    a Git commit message, so be precise about what changed in this file
-    specifically. Do not write a commit message — that's a later step.
+    Read the file's diff and produce one short, imperative-mood line describing the change. This summary will be combined with summaries of other files to write a commit message later.
 
-    Rules:
-    - Output ONLY a single line. No filename prefix, no quotes, no markdown, no preamble.
-    - Use imperative mood ("Add X", "Remove Y", "Rename Z to W").
-    - Aim for 60-80 characters. One sentence.
-    - Describe what changed in the code, not the diff mechanics. "Add MFA branch to login()" is right. "Add 5 lines to login.ts" is wrong.
-    - If the file is new, describe its purpose based on its contents.
-    - If the file is deleted, say "Remove <what it was for>".
-    - Do not invent intent that isn't visible in the diff.
-
-    Examples:
-
-    Add MFA challenge branch to login() when user has mfaEnabled
-    Rename getUserById to findUserById and update all call sites
-    Remove deprecated v1 token parser
-    Add Swift helper that wraps FoundationModels for commit-message generation
+    Describe what the code does, not the mechanics of the diff. A new file is described by its purpose, derived from its contents.
     """
