@@ -31,9 +31,9 @@ die()  { printf "%s==> error:%s %s\n" "$red" "$reset" "$*" >&2; exit 1; }
 # Resolve version: explicit arg, or fetch latest release from GitHub.
 if [ -z "${1:-}" ]; then
     VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/tags" \
-        | grep '"tag_name":' \
-        | head -1 \
-        | sed -E 's/.*"([^"]+)".*/\1/')
+    | grep '"name":' \
+    | head -1 \
+    | sed -E 's/.*"([^"]+)".*/\1/')
     [ -z "$VERSION" ] && die "could not determine latest release. Pass a version: bash install.sh v0.1.2"
 else
     VERSION="$1"
