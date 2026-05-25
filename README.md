@@ -1,4 +1,4 @@
-# strudel
+# saft
 
 A Git commit-message generator powered by Apple's on-device language model.
 No API keys. No cloud. No data leaves your Mac.
@@ -12,19 +12,19 @@ https://github.com/user-attachments/assets/7a431c9c-caf2-4022-a748-ed6b66a3bee7
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Mechse/strudel/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Mechse/saft/master/install.sh | bash
 ```
 
 To audit the script before running:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Mechse/strudel/master/install.sh
+curl -fsSL https://raw.githubusercontent.com/Mechse/saft/master/install.sh
 ```
 
 To uninstall:
 
 ```bash
-sudo rm /usr/local/bin/strudel /usr/local/libexec/strudel-helper
+sudo rm /usr/local/bin/saft /usr/local/libexec/saft-helper
 ```
 
 ## Roadmap

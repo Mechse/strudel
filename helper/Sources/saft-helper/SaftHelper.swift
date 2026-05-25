@@ -41,7 +41,7 @@ struct FileSummary {
 // MARK: - Entry point
 
 @main
-struct StrudelHelper {
+struct SaftHelper {
     static func main() async {
         let args = CommandLine.arguments.dropFirst()
         var mode: Mode = .generateMessage
@@ -55,7 +55,7 @@ struct StrudelHelper {
                 printUsage()
                 exit(0)
             default:
-                fputs("strudel-helper: unknown argument: \(arg)\n", stderr)
+                fputs("saft-helper: unknown argument: \(arg)\n", stderr)
                 printUsage()
                 exit(64)
             }
@@ -66,7 +66,7 @@ struct StrudelHelper {
         case .available:
             break
         case .unavailable(let reason):
-            fputs("strudel-helper: Apple Intelligence unavailable: \(reason)\n", stderr)
+            fputs("saft-helper: Apple Intelligence unavailable: \(reason)\n", stderr)
             exit(2)
         }
 
@@ -74,7 +74,7 @@ struct StrudelHelper {
         guard let input = String(data: stdinData, encoding: .utf8),
             !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
-            fputs("strudel-helper: empty or non-UTF8 input on stdin\n", stderr)
+            fputs("saft-helper: empty or non-UTF8 input on stdin\n", stderr)
             exit(1)
         }
 
@@ -86,7 +86,7 @@ struct StrudelHelper {
                 try await runSummarizeFile(input: input)
             }
         } catch {
-            fputs("strudel-helper: generation failed: \(error)\n", stderr)
+            fputs("saft-helper: generation failed: \(error)\n", stderr)
             exit(1)
         }
     }
@@ -166,7 +166,7 @@ struct StrudelHelper {
 
     static func printUsage() {
         let usage = """
-            usage: strudel-helper [--mode=MODE]
+            usage: saft-helper [--mode=MODE]
 
             Reads input on stdin, writes output to stdout. Errors go to stderr.
 

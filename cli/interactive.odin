@@ -36,16 +36,16 @@ prompt_choice :: proc() -> Choice {
 		case 'c', 'C':
 			return .Cancel
 		case:
-			fmt.println("strudel: please answer a, e, r, or c")
+			fmt.println("saft: please answer a, e, r, or c")
 		}
 	}
 }
 
 edit_message :: proc(initial: string) -> (string, bool) {
-	tmp_path := "/tmp/strudel-COMMIT_EDITMSG"
+	tmp_path := "/tmp/saft-COMMIT_EDITMSG"
 	write_err := os.write_entire_file(tmp_path, transmute([]u8)initial)
 	if write_err != nil {
-		fmt.eprintfln("strudel: failed to write tempfile for editor: %v", write_err)
+		fmt.eprintfln("saft: failed to write tempfile for editor: %v", write_err)
 		return "", false
 	}
 	defer os.remove(tmp_path)
@@ -61,23 +61,23 @@ edit_message :: proc(initial: string) -> (string, bool) {
 		{command = {editor, tmp_path}, stdin = os.stdin, stdout = os.stdout, stderr = os.stderr},
 	)
 	if start_err != nil {
-		fmt.eprintfln("strudel: failed to launch editor: %v", start_err)
+		fmt.eprintfln("saft: failed to launch editor: %v", start_err)
 		return "", false
 	}
 
 	state, wait_err := os.process_wait(proc_handle)
 	if wait_err != nil {
-		fmt.eprintfln("strudel: failed to wait for editor: %v", wait_err)
+		fmt.eprintfln("saft: failed to wait for editor: %v", wait_err)
 		return "", false
 	}
 	if state.exit_code != 0 {
-		fmt.eprintfln("strudel: editor exited %d, commit aborted", state.exit_code)
+		fmt.eprintfln("saft: editor exited %d, commit aborted", state.exit_code)
 		return "", false
 	}
 
 	content, read_err := os.read_entire_file_from_path(tmp_path, context.temp_allocator)
 	if read_err != nil {
-		fmt.eprintfln("strudel: failed to re-read tempfile after edit: %v", read_err)
+		fmt.eprintfln("saft: failed to re-read tempfile after edit: %v", read_err)
 		return "", false
 	}
 	return strings.trim_space(string(content)), true

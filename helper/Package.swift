@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "strudel-helper",
+    name: "saft-helper",
     platforms: [.macOS("26.0")],
     targets: [
         .executableTarget(
-            name: "strudel-helper",
-            path: "Sources/strudel-helper"
+            name: "saft-helper",
+            path: "Sources/saft-helper"
         )
     ]
 )

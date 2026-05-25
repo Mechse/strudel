@@ -7,14 +7,14 @@ main :: proc() {
 	defer free_all(context.temp_allocator)
 
 	if !in_git_repo() {
-		fmt.eprintln("strudel: not in a git repository")
+		fmt.eprintln("saft: not in a git repository")
 		os.exit(1)
 	}
 
 	helper_path, helper_ok := find_helper()
 	if !helper_ok {
-		fmt.eprintln("strudel: could not find strudel-helper binary")
-		fmt.eprintln("        set $STRUDEL_HELPER, or install it next to strudel")
+		fmt.eprintln("saft: could not find saft-helper binary")
+		fmt.eprintln("        set $SAFT_HELPER, or install it next to saft")
 		os.exit(1)
 	}
 
@@ -23,7 +23,7 @@ main :: proc() {
 		os.exit(1)
 	}
 	if len(diff) == 0 {
-		fmt.eprintln("strudel: nothing staged to commit")
+		fmt.eprintln("saft: nothing staged to commit")
 		fmt.eprintln("        use `git add` to stage changes first")
 		os.exit(1)
 	}
@@ -51,7 +51,7 @@ main :: proc() {
 				os.exit(1)
 			}
 			if len(edited) == 0 {
-				fmt.eprintln("strudel: empty message after edit, commit aborted")
+				fmt.eprintln("saft: empty message after edit, commit aborted")
 				os.exit(1)
 			}
 			message = edited
@@ -59,7 +59,7 @@ main :: proc() {
 		case .Regenerate:
 			continue
 		case .Cancel:
-			fmt.println("strudel: cancelled, nothing committed")
+			fmt.println("saft: cancelled, nothing committed")
 			os.exit(0)
 		}
 		break outer
@@ -68,5 +68,5 @@ main :: proc() {
 	if !do_commit(message) {
 		os.exit(1)
 	}
-	fmt.println("strudel: committed")
+	fmt.println("saft: committed")
 }
