@@ -1,24 +1,15 @@
 #!/usr/bin/env bash
 # Installer for saft — Apple Intelligence powered git commit message generator.
-# https://github.com/<you>/saft
+# https://github.com/Mechse/saft
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/<you>/saft/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Mechse/saft/master/install.sh | bash
 #
 # Or, to install a specific version:
-#   curl -fsSL https://raw.githubusercontent.com/<you>/saft/main/install.sh | bash -s -- v0.1.0
+#   curl -fsSL https://raw.githubusercontent.com/Mechse/saft/master/install.sh | bash -s -- v0.1.2
 
 set -euo pipefail
 
-if [ -z "${1:-}" ]; then
-    VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-        | grep '"tag_name":' \
-        | head -1 \
-        | sed -E 's/.*"([^"]+)".*/\1/')
-    [ -z "$VERSION" ] && die "could not determine latest release. Pass a version: bash install.sh v0.1.2"
-else
-    VERSION="$1"
-fi
 REPO="Mechse/saft"
 PREFIX="${PREFIX:-/usr/local}"
 
@@ -31,6 +22,21 @@ if [ -t 1 ]; then
     reset=$'\033[0m'
 else
     bold='' dim='' red='' green='' reset=''
+fi
+
+say()  { printf "%s==>%s %s\n" "$green" "$reset" "$*"; }
+warn() { printf "%s==> warning:%s %s\n" "$red" "$reset" "$*" >&2; }
+die()  { printf "%s==> error:%s %s\n" "$red" "$reset" "$*" >&2; exit 1; }
+
+# Resolve version: explicit arg, or fetch latest release from GitHub.
+if [ -z "${1:-}" ]; then
+    VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+        | grep '"tag_name":' \
+        | head -1 \
+        | sed -E 's/.*"([^"]+)".*/\1/')
+    [ -z "$VERSION" ] && die "could not determine latest release. Pass a version: bash install.sh v0.1.2"
+else
+    VERSION="$1"
 fi
 
 say()  { printf "%s==>%s %s\n" "$green" "$reset" "$*"; }
