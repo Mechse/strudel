@@ -30,7 +30,7 @@ die()  { printf "%s==> error:%s %s\n" "$red" "$reset" "$*" >&2; exit 1; }
 
 # Resolve version: explicit arg, or fetch latest release from GitHub.
 if [ -z "${1:-}" ]; then
-    VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+    VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/tags" \
         | grep '"tag_name":' \
         | head -1 \
         | sed -E 's/.*"([^"]+)".*/\1/')
