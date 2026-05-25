@@ -5,6 +5,19 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
+Tier :: enum {
+	One,
+	Two,
+	Three,
+}
+
+HELPER_CONTEXT :: 4096
+PROMPT_OVERHEAD :: 500
+DIFF_BUDGET :: HELPER_CONTEXT - PROMPT_OVERHEAD
+
+TIER_1_MAX :: 2500
+TIER_2_MAX :: 30_000
+
 find_helper :: proc() -> (string, bool) {
 	if env := os.get_env("SAFT_HELPER", context.temp_allocator); env != "" {
 		if os.exists(env) {
@@ -40,6 +53,33 @@ find_helper :: proc() -> (string, bool) {
 	return "", false
 }
 
+estimate_tokens :: proc(s: string) -> int {
+	return len(s) / 3
+}
+
+truncate_per_file :: proc(diff_body: string, max_lines_per_file: int) -> string {
+	parts := strings.split(diff_body, "diff --git ", context.temp_allocator)
+
+	sb := strings.builder_make(context.temp_allocator)
+
+	for part, i in parts {
+		if len(strings.trim_space(part)) == 0 do continue
+		if i > 0 do strings.write_string(&sb, "diff --git ")
+
+		lines := strings.split(part, "\n", context.temp_allocator)
+		take := min(max_lines_per_file, len(lines))
+		for j in 0 ..< take {
+			strings.write_string(&sb, lines[j])
+			strings.write_string(&sb, "\n")
+		}
+
+		if len(lines) > take {
+			fmt.sbprintfln(&sb, "... [%d more lines truncated]", len(lines) - take)
+		}
+	}
+	return strings.to_string(sb)
+}
+
 generate_message :: proc(helper_path: string, diff: string) -> (string, bool) {
 	in_r, in_w, err1 := os.pipe()
 	if err1 != nil {
@@ -62,6 +102,7 @@ generate_message :: proc(helper_path: string, diff: string) -> (string, bool) {
 		fmt.eprintfln("saft: failed to create stderr pipe: %v", err3)
 		return "", false
 	}
+
 
 	proc_handle, start_err := os.process_start(
 		{command = {helper_path}, stdin = in_r, stdout = out_w, stderr = err_w},

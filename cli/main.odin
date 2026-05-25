@@ -18,7 +18,8 @@ main :: proc() {
 		os.exit(1)
 	}
 
-	diff, diff_ok := get_staged_diff()
+	diff, diff_ok := get_staged_diff_tier_1()
+
 	if !diff_ok {
 		os.exit(1)
 	}
@@ -27,6 +28,30 @@ main :: proc() {
 		fmt.eprintln("        use `git add` to stage changes first")
 		os.exit(1)
 	}
+
+	tokens := estimate_tokens(diff)
+
+	// DEBUG
+	// fmt.printfln("Tokens Calculated: %d", tokens)
+	// DEBUG END
+
+	switch {
+	case tokens <= TIER_1_MAX:
+		break
+	case tokens <= TIER_2_MAX:
+		diff, diff_ok = get_staged_diff_tier_2()
+		break
+	case tokens > TIER_2_MAX:
+		fmt.printfln("saft: Tier 3 not implemented yet.")
+		os.exit(1)
+	}
+
+	// DEBUG
+	// if tokens > TIER_1_MAX && tokens <= TIER_2_MAX {
+	// 	fmt.printfln("Tokens Compressed: %d", estimate_tokens(diff))
+	// 	fmt.printfln("%s", diff)
+	// }
+	// DEBUG END
 
 	message: string
 	outer: for {
