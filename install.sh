@@ -10,20 +10,15 @@
 
 set -euo pipefail
 
-# Near the top of install.sh, replace:
-VERSION="${1:-v0.1.0}"
-
-# With:
 if [ -z "${1:-}" ]; then
     VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
         | grep '"tag_name":' \
         | head -1 \
         | sed -E 's/.*"([^"]+)".*/\1/')
-    [ -z "$VERSION" ] && die "could not determine latest release"
+    [ -z "$VERSION" ] && die "could not determine latest release. Pass a version: bash install.sh v0.1.2"
 else
     VERSION="$1"
 fi
-
 REPO="Mechse/saft"
 PREFIX="${PREFIX:-/usr/local}"
 
@@ -75,4 +70,5 @@ say "${green}saft installed.${reset}"
 printf "\n"
 printf "  Try it: cd into a git repo, stage some changes, and run:\n"
 printf "    %ssaft%s\n\n" "$bold" "$reset"
-printf "  Make sure Apple Intel
+printf "  Make sure Apple Intelligence is enabled:\n"
+printf "    System Settings → Apple Intelligence %s& Siri\n\n" "&"
