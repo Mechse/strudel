@@ -39,7 +39,10 @@ main :: proc() {
 	case tokens <= TIER_1_MAX:
 		break
 	case tokens <= TIER_2_MAX:
+		sp: Spinner
+		spinner_start(&sp, "Compressing diff...")
 		diff, diff_ok = get_staged_diff_tier_2()
+		spinner_stop(&sp)
 		break
 	case tokens > TIER_2_MAX:
 		fmt.printfln("saft: Tier 3 not implemented yet.")
@@ -55,7 +58,10 @@ main :: proc() {
 
 	message: string
 	outer: for {
+		sp: Spinner
+		spinner_start(&sp, "Generating commit message...")
 		msg, ok := generate_message(helper_path, diff)
+		spinner_stop(&sp)
 		if !ok {
 			os.exit(1)
 		}
